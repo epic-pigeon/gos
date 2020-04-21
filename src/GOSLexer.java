@@ -9,11 +9,11 @@ public class GOSLexer {
         this.code = code;
     }
 
-    public List<GOSCommand> lex() {
-        List<GOSCommand> result = new ArrayList<>();
+    public List<GOSLexem> lex() {
+        List<GOSLexem> result = new ArrayList<>();
         skipWhitespace();
         while (ptr != code.length()) {
-            result.add(parseCommand());
+            result.add(parseLexem());
             skipWhitespace();
         }
         return result;
@@ -49,7 +49,7 @@ public class GOSLexer {
     }
 
     private boolean isIdentifierChar(char c) {
-        return Character.isAlphabetic(c) || Character.isDigit(c) || c == '$' || c == '_';
+        return Character.isAlphabetic(c) || Character.isDigit(c) || c == '$' || c == '_' || c == '+' || c == '-';
     }
 
     private String parseIdentifier() {
@@ -77,10 +77,10 @@ public class GOSLexer {
     private ScopeArgument parseScopeArgument() {
         char c = consumeChar();
         assert c == '{';
-        List<GOSCommand> commands = new ArrayList<>();
+        List<GOSLexem> commands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
-            commands.add(parseCommand());
+            commands.add(parseLexem());
             skipWhitespace();
         }
         consumeChar();
@@ -92,10 +92,10 @@ public class GOSLexer {
         skipWhitespace();
         c = consumeChar();
         assert c == '{';
-        List<GOSCommand> plusCommands = new ArrayList<>();
+        List<GOSLexem> plusCommands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
-            plusCommands.add(parseCommand());
+            plusCommands.add(parseLexem());
             skipWhitespace();
         }
         consumeChar();
@@ -107,18 +107,27 @@ public class GOSLexer {
         skipWhitespace();
         c = consumeChar();
         assert c == '{';
-        List<GOSCommand> minusCommands = new ArrayList<>();
+        List<GOSLexem> minusCommands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
-            minusCommands.add(parseCommand());
+            minusCommands.add(parseLexem());
             skipWhitespace();
         }
         consumeChar();
         return new SwitchScopeArgument(plusCommands, minusCommands);
     }
 
-    private GOSCommand parseCommand() {
+    private GOSAlias parseAlias() {
+        skipWhitespace();
         String identifier = parseIdentifier();
+        skipWhitespace();
+        Argument argument = parseArgument();
+        return new GOSAlias(identifier, argument);
+    }
+
+    private GOSLexem parseLexem() {
+        String identifier = parseIdentifier();
+        if (identifier.equals("alias")) return parseAlias();
         List<Argument> arguments = new ArrayList<>();
         skipWhitespace();
         Argument argument = parseArgument();

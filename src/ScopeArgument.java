@@ -1,13 +1,13 @@
 import java.util.List;
 
 public class ScopeArgument extends Argument {
-    private List<GOSCommand> commandList;
+    private List<GOSLexem> commandList;
 
-    public ScopeArgument(List<GOSCommand> commandList) {
+    public ScopeArgument(List<GOSLexem> commandList) {
         this.commandList = commandList;
     }
 
-    public List<GOSCommand> getCommandList() {
+    public List<GOSLexem> getCommandList() {
         return commandList;
     }
 

@@ -1,18 +1,18 @@
 import java.util.List;
 
 public class SwitchScopeArgument extends Argument {
-    private List<GOSCommand> plusCommands, minusCommands;
+    private List<GOSLexem> plusCommands, minusCommands;
 
-    public SwitchScopeArgument(List<GOSCommand> plusCommands, List<GOSCommand> minusCommands) {
+    public SwitchScopeArgument(List<GOSLexem> plusCommands, List<GOSLexem> minusCommands) {
         this.plusCommands = plusCommands;
         this.minusCommands = minusCommands;
     }
 
-    public List<GOSCommand> getPlusCommands() {
+    public List<GOSLexem> getPlusCommands() {
         return plusCommands;
     }
 
-    public List<GOSCommand> getMinusCommands() {
+    public List<GOSLexem> getMinusCommands() {
         return minusCommands;
     }
 

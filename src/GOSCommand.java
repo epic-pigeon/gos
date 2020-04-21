@@ -1,6 +1,6 @@
 import java.util.List;
 
-public class GOSCommand {
+public class GOSCommand extends GOSLexem {
     private String name;
     private List<Argument> arguments;
 
