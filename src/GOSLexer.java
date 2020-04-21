@@ -33,6 +33,12 @@ public class GOSLexer {
 
     private void skipWhitespace() {
         while (nextChar() != null && Character.isWhitespace(nextChar())) consumeChar();
+        if (nextChar() != null && nextChar() == '*') {
+            consumeChar();
+            while (nextChar() != '*') consumeChar();
+            consumeChar();
+            skipWhitespace();
+        }
     }
 
     private String parseString() {
@@ -70,9 +76,26 @@ public class GOSLexer {
         } else if (nextChar() == '{') {
             return parseScopeArgument();
         } else if (nextChar() == '+') {
+            return parseBindScopeArgument();
+        } else if (nextChar() == '#') {
             return parseSwitchScopeArgument();
         }
         return null;
+    }
+    private SwitchScopeArgument parseSwitchScopeArgument() {
+        char c = consumeChar();
+        assert c == '#';
+        List<List<GOSLexem>> clauses = new ArrayList<>();
+        skipWhitespace();
+        clauses.add(parseScopeArgument().getCommandList());
+        skipWhitespace();
+        while (nextChar() != null && nextChar() == ',') {
+            consumeChar();
+            skipWhitespace();
+            clauses.add(parseScopeArgument().getCommandList());
+            skipWhitespace();
+        }
+        return new SwitchScopeArgument(clauses);
     }
     private ScopeArgument parseScopeArgument() {
         char c = consumeChar();
@@ -86,7 +109,7 @@ public class GOSLexer {
         consumeChar();
         return new ScopeArgument(commands);
     }
-    private SwitchScopeArgument parseSwitchScopeArgument() {
+    private BindScopeArgument parseBindScopeArgument() {
         char c = consumeChar();
         assert c == '+';
         skipWhitespace();
@@ -114,7 +137,7 @@ public class GOSLexer {
             skipWhitespace();
         }
         consumeChar();
-        return new SwitchScopeArgument(plusCommands, minusCommands);
+        return new BindScopeArgument(plusCommands, minusCommands);
     }
 
     private GOSAlias parseAlias() {
@@ -126,6 +149,8 @@ public class GOSLexer {
     }
 
     private GOSLexem parseLexem() {
+        if (nextChar() == ';') consumeChar();
+        skipWhitespace();
         String identifier = parseIdentifier();
         if (identifier.equals("alias")) return parseAlias();
         List<Argument> arguments = new ArrayList<>();
