@@ -12,6 +12,6 @@ public class Main {
         String code = new String(Files.readAllBytes(Paths.get(args[0])));
         List<GOSLexem> result = new GOSLexer(code).lex();
         String name = args[2];
-        new Writer(Paths.get(args[1]), name).write(new Generator(new Transpiler(result, name).transpile(), name).generate());
+        new Writer(Paths.get(args[1]), name).write(new Generator(new Transpiler(result, name).transpile(true), name).generate());
     }
 }

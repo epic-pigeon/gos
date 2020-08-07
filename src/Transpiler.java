@@ -3,6 +3,8 @@ import javafx.util.Pair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 public class Transpiler {
     private static int count = 0;
@@ -20,6 +22,7 @@ public class Transpiler {
         return "__internal"+(aliasCount-1);
     }
 
+    private static List<Pair<String, GOSIfPressed>> ifs = new ArrayList<>();
 
     private List<GOSLexem> commands;
     private String name;
@@ -28,8 +31,10 @@ public class Transpiler {
         this.commands = commands;
         this.name = name;
     }
-
     public Pair<List<Pair<String, List<CSGOCommand>>>, List<CSGOCommand>> transpile() {
+        return transpile(false);
+    }
+    public Pair<List<Pair<String, List<CSGOCommand>>>, List<CSGOCommand>> transpile(boolean top) {
         List<CSGOCommand> commandResult = new ArrayList<>();
         List<Pair<String, List<CSGOCommand>>> cfgs = new ArrayList<>();
         for (GOSLexem lexem: commands) {
@@ -139,7 +144,62 @@ public class Transpiler {
                         ));
                     }
                     commandResult.add(new CSGOCommand("alias", Arrays.asList(aliasName, "exec " + ("__gencfg_" + name + "/") + cfgNames.get(0))));
+                } else throw new RuntimeException("Alias second argument can only be a scope");
+            } else if (lexem instanceof GOSIfPressed) {
+                String aliasName = getNextAliasName();
+                ifs.add(new Pair<>(aliasName, (GOSIfPressed) lexem));
+                commandResult.add(new CSGOCommand(aliasName, new ArrayList<>()));
+            }
+        }
+        if (top) {
+            List<Pair<String, List<Pair<String, GOSIfPressed>>>> ifsSorted = new ArrayList<>();
+            for (Pair<String, GOSIfPressed> anIf: ifs) {
+                AtomicBoolean flag = new AtomicBoolean(false);
+                ifsSorted.forEach(pair -> {
+                    if (!flag.get() && pair.getKey().equals(anIf.getValue().getButton())) {
+                        pair.getValue().add(anIf);
+                        flag.set(true);
+                    }
+                });
+                if (!flag.get()) {
+                    ifsSorted.add(new Pair<>(anIf.getValue().getButton(), Arrays.asList(anIf)));
                 }
+            }
+            List<CSGOCommand> initCommands = new ArrayList<>();
+            for (Pair<String, List<Pair<String, GOSIfPressed>>> buttonListPair: ifsSorted) {
+                String button = buttonListPair.getKey();
+                List<Pair<String, GOSIfPressed>> ifs = buttonListPair.getValue();
+                String aliasPlusCfgName = getNextCfgName();
+                List<CSGOCommand> aliasesPlus = new ArrayList<>();
+                for (Pair<String, GOSIfPressed> theIf: ifs) {
+                    String cfgName = getNextCfgName();
+                    Pair<List<Pair<String, List<CSGOCommand>>>, List<CSGOCommand>>
+                            ifResult = new Transpiler(theIf.getValue().getThen().getCommandList(), name).transpile();
+                    cfgs.addAll(ifResult.getKey());
+                    cfgs.add(new Pair<>(cfgName, ifResult.getValue()));
+                    aliasesPlus.add(new CSGOCommand("alias", Arrays.asList(theIf.getKey(), "exec " + ("__gencfg_" + name + "/") + cfgName)));
+                }
+                cfgs.add(new Pair<>(aliasPlusCfgName, aliasesPlus));
+                String aliasMinusCfgName = getNextCfgName();
+                List<CSGOCommand> aliasesMinus = new ArrayList<>();
+                for (Pair<String, GOSIfPressed> theIf: ifs) {
+                    String cfgName = getNextCfgName();
+                    Pair<List<Pair<String, List<CSGOCommand>>>, List<CSGOCommand>>
+                            ifResult = new Transpiler(theIf.getValue().getOtherwise().getCommandList(), name).transpile();
+                    cfgs.addAll(ifResult.getKey());
+                    cfgs.add(new Pair<>(cfgName, ifResult.getValue()));
+                    aliasesMinus.add(new CSGOCommand("alias", Arrays.asList(theIf.getKey(), "exec " + ("__gencfg_" + name + "/") + cfgName)));
+                }
+                cfgs.add(new Pair<>(aliasMinusCfgName, aliasesMinus));
+                String aliasName = getNextAliasName();
+                initCommands.add(new CSGOCommand("alias", Arrays.asList("+"+aliasName, "exec " + ("__gencfg_" + name + "/") + aliasPlusCfgName)));
+                initCommands.add(new CSGOCommand("alias", Arrays.asList("-"+aliasName, "exec " + ("__gencfg_" + name + "/") + aliasMinusCfgName)));
+                initCommands.add(new CSGOCommand("bind", Arrays.asList(button, "+"+aliasName)));
+                initCommands.add(new CSGOCommand("exec", Arrays.asList(("__gencfg_" + name + "/") + aliasMinusCfgName)));
+                List<CSGOCommand> newResult = new ArrayList<>();
+                newResult.addAll(initCommands);
+                newResult.addAll(commandResult);
+                commandResult = newResult;
             }
         }
         return new Pair<>(cfgs, commandResult);

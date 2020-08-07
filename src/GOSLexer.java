@@ -44,7 +44,7 @@ public class GOSLexer {
     private String parseString() {
         StringBuilder result = new StringBuilder();
         char quote = consumeChar();
-        assert quote == '"' || quote == '\'';
+        if (quote != '"' && quote != '\'') throw new RuntimeException("A quote expected");
         while (nextChar() != quote) {
             char c = consumeChar();
             if (c == '\\') c = consumeChar();
@@ -63,6 +63,20 @@ public class GOSLexer {
         while (isIdentifierChar(nextChar())) identifier.append(consumeChar());
         if (identifier.length() == 0) throw new RuntimeException();
         return identifier.toString();
+    }
+
+    private GOSIfPressed parsePressed() {
+        skipWhitespace();
+        String button = parseStringArgument().getValue();
+        skipWhitespace();
+        ScopeArgument then = parseScopeArgument();
+        skipWhitespace();
+        if (!parseIdentifier().equals("else")) {
+            throw new RuntimeException("Else is necessary");
+        }
+        skipWhitespace();
+        ScopeArgument otherwise = parseScopeArgument();
+        return new GOSIfPressed(button, then, otherwise);
     }
 
     private StringArgument parseStringArgument() {
@@ -84,7 +98,7 @@ public class GOSLexer {
     }
     private SwitchScopeArgument parseSwitchScopeArgument() {
         char c = consumeChar();
-        assert c == '#';
+        if (c != '#') throw new RuntimeException("# expected");
         List<List<GOSLexem>> clauses = new ArrayList<>();
         skipWhitespace();
         clauses.add(parseScopeArgument().getCommandList());
@@ -99,7 +113,7 @@ public class GOSLexer {
     }
     private ScopeArgument parseScopeArgument() {
         char c = consumeChar();
-        assert c == '{';
+        if (c != '{') throw new RuntimeException("{ expected");
         List<GOSLexem> commands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
@@ -111,14 +125,15 @@ public class GOSLexer {
     }
     private BindScopeArgument parseBindScopeArgument() {
         char c = consumeChar();
-        assert c == '+';
+        if (c != '+') throw new RuntimeException("+ expected");
         skipWhitespace();
         c = consumeChar();
-        assert c == '{';
+        if (c != '{') throw new RuntimeException("{ expected");
         List<GOSLexem> plusCommands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
-            plusCommands.add(parseLexem());
+            GOSLexem lexem = parseLexem();
+            plusCommands.add(lexem);
             skipWhitespace();
         }
         consumeChar();
@@ -126,10 +141,10 @@ public class GOSLexer {
 
 
         c = consumeChar();
-        assert c == '-';
+        if (c != '-') throw new RuntimeException("- expected");
         skipWhitespace();
         c = consumeChar();
-        assert c == '{';
+        if (c != '{') throw new RuntimeException("{ expected");
         List<GOSLexem> minusCommands = new ArrayList<>();
         skipWhitespace();
         while (nextChar() != '}') {
@@ -153,6 +168,7 @@ public class GOSLexer {
         skipWhitespace();
         String identifier = parseIdentifier();
         if (identifier.equals("alias")) return parseAlias();
+        if (identifier.equals("pressed")) return parsePressed();
         List<Argument> arguments = new ArrayList<>();
         skipWhitespace();
         Argument argument = parseArgument();
